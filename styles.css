@@ -1,0 +1,40 @@
+/* body {
+    font-family: 'Times New Roman', Times, serif;
+    background-color: whitesmoke;
+    color: rgb(14, 14, 14);
+    /* background-image: url("https://media.istockphoto.com/id/1156110105/vector/simple-black-tournament-bracket-template-for-32-teams-on-white.jpg?s=170667a&w=0&k=20&c=EQK_unovRBBKQSiBgXEthcm5bgJrWXb-5W7rWqLy4ec=");"
+    background-size: display; */
+   
+/* a{
+    color:grey;
+} */
+h1, h2{
+    text-align: center;
+}
+img{
+    /* border: 5px solid floralwhite; */
+    padding: 5px;
+    height: 200px;
+    /* margin:auto; */
+    /* display: block; */
+}
+/* .rizz{
+    font-family: initial;
+    color: chartreuse;
+    border: 5px dashed red;
+    font-size: xx-large;
+    font-weight: bolder;
+    background-color: blueviolet;
+} */
+/* .rizz:hover{
+font-size: 450%;
+color: cornsilk;
+border: 5px solid cyan;
+} */
+li{
+width: fit-content;
+}
+/* li:hover{
+text-decoration: underline;
+background-color: darkgrey;
+} */

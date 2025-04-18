@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hoop Wordle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom Styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Basketball court themed gradient background */
+            /* You can replace this with a background-image URL if you have one */
+            /* background-image: url('your-basketball-image.jpg'); */
+            background: linear-gradient(to bottom right, #EBA434, #D4852C, #BF6724, #A9481C, #6B2D12); /* Shades of orange/brown */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            min-height: 100vh; /* Ensure background covers the whole viewport */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between; /* Push keyboard towards bottom */
+            padding: 1rem 0; /* Add some padding top/bottom */
+            overflow-x: hidden; /* Prevent horizontal scroll */
+        }
+
+        /* Game Tile Styles */
+        .tile {
+            width: 50px; /* Adjust size as needed */
+            height: 50px;
+            border: 2px solid #d3d6da; /* Light gray border */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem; /* Adjust font size */
+            font-weight: bold;
+            text-transform: uppercase;
+            margin: 2px;
+            color: white; /* Text color for tiles */
+            transition: transform 0.3s ease, background-color 0.5s ease, border-color 0.5s ease; /* Smooth transitions */
+            border-radius: 0.375rem; /* rounded-md */
+        }
+
+        /* Tile Animation for reveal */
+        .tile.reveal {
+            transform: rotateX(360deg);
+        }
+        /* Add a shake animation for short words */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+
+        /* Tile Color States */
+        .tile.correct {
+            background-color: #6aaa64; /* Green */
+            border-color: #6aaa64;
+        }
+        .tile.present {
+            background-color: #c9b458; /* Yellow */
+            border-color: #c9b458;
+        }
+        .tile.absent {
+            background-color: #787c7e; /* Dark Gray */
+            border-color: #787c7e;
+        }
+        .tile.filled {
+             border-color: #878a8c; /* Slightly darker gray for filled */
+        }
+
+
+        /* Keyboard Key Styles */
+        .key {
+            font-weight: bold;
+            height: 50px; /* Adjust height */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 12px; /* Adjust padding */
+            margin: 2px;
+            cursor: pointer;
+            background-color: #d3d6da; /* Light gray */
+            color: #1a1a1b; /* Dark text */
+            border-radius: 0.375rem; /* rounded-md */
+            text-transform: uppercase;
+            transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
+            user-select: none; /* Prevent text selection */
+        }
+        .key:hover {
+            background-color: #b0b3b6; /* Slightly darker on hover */
+        }
+        .key.wide {
+            padding: 0 20px; /* Wider padding for Enter/Backspace */
+            font-size: 0.8rem; /* Smaller font for text keys */
+        }
+
+        /* Keyboard Key Color States */
+        .key.correct {
+            background-color: #6aaa64; /* Green */
+            color: white;
+        }
+        .key.present {
+            background-color: #c9b458; /* Yellow */
+            color: white;
+        }
+        .key.absent {
+            background-color: #787c7e; /* Dark Gray */
+            color: white;
+        }
+
+        /* Message Box Styles */
+        #message-box {
+            position: fixed; /* Fixed position */
+            top: 10%; /* Position from the top */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8); /* Semi-transparent black */
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            z-index: 100; /* Ensure it's above other elements */
+            opacity: 0; /* Start hidden */
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none; /* Don't block clicks */
+            text-align: center;
+            max-width: 80%;
+        }
+        #message-box.show {
+            opacity: 1;
+        }
+
+        /* Container for centering */
+        .container {
+            max-width: 500px; /* Max width for the game area */
+            width: 95%; /* Responsive width */
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-grow: 1; /* Allow container to grow */
+            justify-content: center; /* Center grid vertically */
+        }
+
+        /* Ensure keyboard stays at bottom */
+        #keyboard {
+           width: 100%;
+           max-width: 500px; /* Match container width */
+           margin-top: auto; /* Push to bottom */
+           padding-bottom: 1rem; /* Spacing from bottom edge */
+        }
+
+    </style>
+</head>
+<body class="flex flex-col items-center justify-between min-h-screen p-4">
+    
+    <h1 class="text-3xl md:text-4xl font-bold text-white mb-4 text-center shadow-lg">Hoop Wordle</h1>
+
+    <div id="message-box"></div>
+
+    <div class="container">
+        <div id="game-grid" class="grid gap-1 mb-8">
+            </div>
+    </div>
+
+    <div id="keyboard" class="flex flex-col items-center space-y-1">
+        <div class="flex justify-center space-x-1 w-full">
+            <button data-key="Q" class="key">Q</button>
+            <button data-key="W" class="key">W</button>
+            <button data-key="E" class="key">E</button>
+            <button data-key="R" class="key">R</button>
+            <button data-key="T" class="key">T</button>
+            <button data-key="Y" class="key">Y</button>
+            <button data-key="U" class="key">U</button>
+            <button data-key="I" class="key">I</button>
+            <button data-key="O" class="key">O</button>
+            <button data-key="P" class="key">P</button>
+        </div>
+        <div class="flex justify-center space-x-1 w-full">
+            <div class="w-2"></div> <button data-key="A" class="key">A</button>
+            <button data-key="S" class="key">S</button>
+            <button data-key="D" class="key">D</button>
+            <button data-key="F" class="key">F</button>
+            <button data-key="G" class="key">G</button>
+            <button data-key="H" class="key">H</button>
+            <button data-key="J" class="key">J</button>
+            <button data-key="K" class="key">K</button>
+            <button data-key="L" class="key">L</button>
+             <div class="w-2"></div> </div>
+        <div class="flex justify-center space-x-1 w-full">
+            <button data-key="Enter" class="key wide">Enter</button>
+            <button data-key="Z" class="key">Z</button>
+            <button data-key="X" class="key">X</button>
+            <button data-key="C" class="key">C</button>
+            <button data-key="V" class="key">V</button>
+            <button data-key="B" class="key">B</button>
+            <button data-key="N" class="key">N</button>
+            <button data-key="M" class="key">M</button>
+            <button data-key="Backspace" class="key wide">⌫</button>
+        </div>
+    </div>
+
+    <button id="reset-button" class="mt-4 px-6 py-2 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition hidden">Play Again</button>
+
+
+    <script>
+        // --- Game Constants and Variables ---
+        const MAX_GUESSES = 6;
+        const wordList = [
+            // 5 Letters
+            "JAMES", "CURRY", "KOBE", "SHAQ", "MAGIC", "BIRD", "WADE", "DAVIS", "LUKA", "ZION", "NASH", "PAUL", "KYRIE", "TATUM", "BROWN", "TRAE", "YOUNG", "MORAN", "LAKERS", "BULLS", "KNICKS", "NETS", "HEAT", "SPURS", "MAVS", "SIXERS", "JAZZ", "SUNS", "BUCKS", "KINGS", "HAWKS", "CAVS", "MAGIC", "DREAM", "PIPPEN", "RODMAN", "STOCK", "MALON", "HILL", "KIDD", "KEMP", "PAYTON", "EWING", "SHAQ", "DUNK", "DRIBB", "SHOOT", "PASS", "BLOCK", "STEAL", "COURT", "HOOPS", "FOUL", "SCORE", "POINT", "GUARD", "COACH", "SWISH", "ALLEY", "PAINT", "ZONE", "PRESS", "PICK", "ROLL", "AGENT", "ARENA", "ASSIST", "AWARD", "BENCH", "BOARD", "BUZZER", "CAMP", "CLOCK", "CROSS", "CUT", "DRAFT", "DRIVE", "ELBOW", "ENTRY", "FADE", "FAKE", "FAST", "FINAL", "FLOOR", "GLASS", "GOAL", "HAND", "HELD", "HOOK", "INCH", "INDEX", "JAM", "JERSEY", "JUMP", "KEY", "LANE", "LEAD", "LEFT", "LEG", "LINE", "LOCK", "LOOP", "LOSS", "MARCH", "MATCH", "MOVE", "NAIL", "NETS", "OPEN", "POST", "PUMP", "RANGE", "REACH", "RIM", "ROCK", "RUN", "SCOUT", "SET", "SHOT", "SIDE", "SLAM", "SPIN", "SPOT", "STATS", "STOP", "STRIP", "TEAM", "THROW", "TIP", "TOP", "TRADE", "TRAP", "TRASH", "TRIP", "TURN", "VAULT", "WALK", "WING", "WORLD",
+            // 6 Letters
+            "JORDAN", "LEBRON", "DURANT", "HARDEN", "EMBIID", "JOKIC", "ALLEN", "BRYANT", "DUNCAN", "PIERCE", "KAWHI", "GEORGE", "BUTLER", "SIMMON", "BOOKER", "CELTIC", "NUGGETS", "PACERS", "PISTON", "RAPTOR", "WIZARD", "TIMBER", "TRAVEL", "LAYUP", "JUMPER", "BASKET", "BEATER", "SCREEN", "FINALS", "PLAYER", "REPLAY", "REFEREE", "ROOKIE", "SEASON", "STANCE", "SWITCH", "TICKET", "TRAVEL", "TRIPLE", "TROPHY", "WEAVE", "WHISTL",
+            // 7 Letters
+            "GIANNIS", "GARNETT", "NOWITZK", "LILLARD", "MITCHEL", "WARRIOR", "ROCKETS", "BLAZERS", "GRIZZLY", "HORNETS", "PELICAN", "THUNDER", "REBOUND", "ASSISTS", "FORWARD", "CENTER", "PERIMET", "TIMEOUT", "OVERTIME", "CHAMP", "DEFENSE", "OFFENSE", "QUARTER", "TIMEOUT", "VETERAN"
+        ];
+
+        let secretWord = "";
+        let currentGuess = [];
+        let currentRow = 0;
+        let isGameOver = false;
+        let wordLength = 5; // Default length, will be set when word is chosen
+
+        const gameGrid = document.getElementById('game-grid');
+        const keyboard = document.getElementById('keyboard');
+        const messageBox = document.getElementById('message-box');
+        const resetButton = document.getElementById('reset-button');
+
+        // --- Game Initialization ---
+        function initializeGame() {
+            // Reset variables
+            currentGuess = [];
+            currentRow = 0;
+            isGameOver = false;
+            secretWord = wordList[Math.floor(Math.random() * wordList.length)].toUpperCase();
+            wordLength = secretWord.length; // Set word length based on chosen word
+            console.log("Secret Word:", secretWord); // For debugging
+
+            // Clear previous grid
+            gameGrid.innerHTML = '';
+            gameGrid.style.gridTemplateColumns = `repeat(${wordLength}, minmax(0, 1fr))`; // Dynamic columns
+
+            // Create the grid
+            for (let i = 0; i < MAX_GUESSES; i++) {
+                for (let j = 0; j < wordLength; j++) {
+                    const tile = document.createElement('div');
+                    tile.classList.add('tile');
+                    tile.id = `tile-${i}-${j}`;
+                    gameGrid.appendChild(tile);
+                }
+            }
+
+             // Reset keyboard colors
+            const keys = keyboard.querySelectorAll('.key');
+            keys.forEach(key => {
+                key.classList.remove('correct', 'present', 'absent');
+            });
+
+            // Hide reset button
+            resetButton.classList.add('hidden');
+
+            // Clear any lingering messages
+            hideMessage();
+        }
+
+        // --- Message Handling ---
+        function showMessage(message, duration = 2000) {
+            messageBox.textContent = message;
+            messageBox.classList.add('show');
+            // Hide the message after a delay (unless duration is 0 or less)
+            if (duration > 0) {
+                setTimeout(() => {
+                    hideMessage();
+                }, duration);
+            }
+        }
+
+        function hideMessage() {
+             messageBox.classList.remove('show');
+        }
+
+        // --- Input Handling ---
+        function handleKeyPress(key) {
+            if (isGameOver) return;
+
+            const letter = key.toUpperCase();
+
+            if (letter === 'ENTER') {
+                submitGuess();
+            } else if (letter === 'BACKSPACE' || letter === '⌫') {
+                deleteLetter();
+            } else if (letter.length === 1 && letter >= 'A' && letter <= 'Z') {
+                addLetter(letter);
+            }
+        }
+
+        function addLetter(letter) {
+            if (currentGuess.length < wordLength) {
+                currentGuess.push(letter);
+                const tileIndex = currentGuess.length - 1;
+                const tile = document.getElementById(`tile-${currentRow}-${tileIndex}`);
+                if (tile) {
+                    tile.textContent = letter;
+                    tile.classList.add('filled'); // Add border indication
+                }
+            }
+        }
+
+        function deleteLetter() {
+            if (currentGuess.length > 0) {
+                const tileIndex = currentGuess.length - 1;
+                const tile = document.getElementById(`tile-${currentRow}-${tileIndex}`);
+                 if (tile) {
+                    tile.textContent = '';
+                    tile.classList.remove('filled');
+                 }
+                currentGuess.pop();
+            }
+        }
+
+        // --- Guess Submission and Evaluation ---
+        function submitGuess() {
+            if (currentGuess.length !== wordLength) {
+                showMessage(`Not enough letters (need ${wordLength})`);
+                shakeCurrentRow(); // Add shake effect for short words
+                return;
+            }
+
+            const guessWord = currentGuess.join('');
+            console.log("Guessing:", guessWord); // Debugging
+
+            // --- VALIDATION AGAINST WORD LIST (COMMENTED OUT) ---
+            // Check if the guessed word is in our allowed list
+            // if (!wordList.includes(guessWord)) {
+            //     showMessage("Not in word list");
+            //     shakeCurrentRow(); // Add shake effect for invalid words
+            //     return; // Stop processing if the word is not valid
+            // }
+
+
+            // --- Evaluate the guess ---
+            const guessResult = evaluateGuess(guessWord);
+            updateGrid(guessResult);
+            updateKeyboard(guessResult);
+
+            // --- Check game status ---
+            if (guessWord === secretWord) {
+                showMessage("SWISH! You got it!", 5000);
+                isGameOver = true;
+                revealResetButton();
+                // Optional: Add winning animation/effect here
+            } else if (currentRow === MAX_GUESSES - 1) {
+                showMessage(`Game Over! The word was ${secretWord}`, 0); // Show message indefinitely until reset
+                isGameOver = true;
+                revealResetButton();
+            } else {
+                // Move to the next row
+                currentRow++;
+                currentGuess = [];
+            }
+        }
+
+        function evaluateGuess(guess) {
+            const result = [];
+            const secretLetters = secretWord.split('');
+            const guessLetters = guess.split('');
+            const letterCounts = {}; // To handle duplicate letters correctly
+
+            // Count letters in the secret word
+            for (const letter of secretLetters) {
+                letterCounts[letter] = (letterCounts[letter] || 0) + 1;
+            }
+
+            // First pass: Check for correct letters (green)
+            for (let i = 0; i < wordLength; i++) {
+                if (guessLetters[i] === secretLetters[i]) {
+                    result[i] = { letter: guessLetters[i], status: 'correct' };
+                    letterCounts[guessLetters[i]]--; // Decrement count for used correct letter
+                }
+            }
+
+            // Second pass: Check for present letters (yellow) and absent letters (gray)
+            for (let i = 0; i < wordLength; i++) {
+                if (!result[i]) { // Only check if not already marked as correct
+                    if (secretLetters.includes(guessLetters[i]) && letterCounts[guessLetters[i]] > 0) {
+                        result[i] = { letter: guessLetters[i], status: 'present' };
+                        letterCounts[guessLetters[i]]--; // Decrement count for used present letter
+                    } else {
+                        result[i] = { letter: guessLetters[i], status: 'absent' };
+                    }
+                }
+            }
+            return result;
+        }
+
+
+        // --- UI Updates ---
+        function updateGrid(result) {
+            for (let i = 0; i < wordLength; i++) {
+                const tile = document.getElementById(`tile-${currentRow}-${i}`);
+                // Ensure tile exists before proceeding
+                if (!tile) {
+                    console.error(`Tile tile-${currentRow}-${i} not found!`);
+                    continue;
+                }
+                const { letter, status } = result[i];
+                // Apply status and reveal animation with a delay
+                setTimeout(() => {
+                    tile.classList.add(status, 'reveal');
+                }, i * 250); // Stagger the reveal animation slightly more
+            }
+        }
+
+        function updateKeyboard(result) {
+            result.forEach(({ letter, status }) => {
+                const keyElement = keyboard.querySelector(`.key[data-key="${letter}"]`);
+                if (!keyElement) return;
+
+                const currentStatus = keyElement.classList.contains('correct') ? 'correct'
+                                    : keyElement.classList.contains('present') ? 'present'
+                                    : keyElement.classList.contains('absent') ? 'absent'
+                                    : null;
+
+                // Update priority: correct > present > absent
+                if (status === 'correct') {
+                    keyElement.classList.remove('present', 'absent');
+                    keyElement.classList.add('correct');
+                } else if (status === 'present' && currentStatus !== 'correct') {
+                     keyElement.classList.remove('absent');
+                     keyElement.classList.add('present');
+                } else if (status === 'absent' && !currentStatus) { // Only mark absent if not already present/correct
+                    keyElement.classList.add('absent');
+                }
+            });
+        }
+
+        // Function to add shake animation to the current row's tiles (for short words)
+        function shakeCurrentRow() {
+            for (let i = 0; i < wordLength; i++) {
+                const tile = document.getElementById(`tile-${currentRow}-${i}`);
+                if (tile) {
+                    tile.classList.add('shake');
+                    // Remove the class after the animation finishes
+                    tile.addEventListener('animationend', () => {
+                        tile.classList.remove('shake');
+                    }, { once: true }); // Ensure listener is removed after firing once
+                }
+            }
+        }
+
+
+        function revealResetButton() {
+            resetButton.classList.remove('hidden');
+        }
+
+        // --- Event Listeners ---
+
+        // On-screen keyboard clicks
+        keyboard.addEventListener('click', (event) => {
+            if (event.target.matches('.key')) {
+                const key = event.target.dataset.key;
+                handleKeyPress(key);
+            }
+        });
+
+        // Physical keyboard presses
+        document.addEventListener('keydown', (event) => {
+            // Prevent default browser behavior for Backspace if needed
+            if (event.key === 'Backspace') {
+                 event.preventDefault();
+            }
+            handleKeyPress(event.key);
+        });
+
+        // Reset button click
+        resetButton.addEventListener('click', initializeGame);
+
+        // --- Start the game ---
+        initializeGame();
+
+    </script>
+<a href="../index.html">Back to Professional Blog</a>
+<a href="resume.html">Back to Scratch Page</a>
+</body>
+</html>
